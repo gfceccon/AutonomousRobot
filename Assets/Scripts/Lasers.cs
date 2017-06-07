@@ -9,64 +9,63 @@ using System.Collections.Generic;
 [ExecuteInEditMode]
 public class Lasers : MonoBehaviour
 {
-	const int quantity = 360;
-	const float maxDistance = 8f;
-	const float laserPerAngle = 2f;
-	Vector3[] vectors = new Vector3[quantity];
-    Vector3?[] collision = new Vector3?[quantity];
-/*
-    public int lineCount = 100;
-    public float radius = 3.0f;
-    static Material lineMaterial;
+	public const int quantity = 360;
+	public const float maxDistance = 8f;
+	public const float laserPerAngle = 2f;
 
-    static void CreateLineMaterial()
-    {
-        if (!lineMaterial)
-        {
-            // Unity has a built-in shader that is useful for drawing
-            // simple colored things.
-            Shader shader = Shader.Find("Hidden/Internal-Colored");
-            lineMaterial = new Material(shader);
-            lineMaterial.hideFlags = HideFlags.HideAndDontSave;
-            // Turn on alpha blending
-            lineMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            lineMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            // Turn backface culling off
-            lineMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
-            // Turn off depth writes
-            lineMaterial.SetInt("_ZWrite", 0);
-        }
-    }
+    [HideInInspector]
+	public Vector3[] vectors = new Vector3[quantity];
+    [HideInInspector]
+    public float?[] collisions = new float?[quantity];
+    [HideInInspector]
+    public Vector3[] means = new Vector3[quantity];
+    public int meanCount;
+    
+    public Material hit;
+    public Material miss;
+    public Material mean;
 
-    // Will be called after all regular rendering is done
     public void OnRenderObject()
     {
-        CreateLineMaterial();
-        // Apply the line material
-        lineMaterial.SetPass(0);
 
         GL.PushMatrix();
-        // Set transformation matrix for drawing to
-        // match our transform
         GL.MultMatrix(transform.localToWorldMatrix);
 
-        // Draw lines
+        miss.SetPass(0);
         GL.Begin(GL.LINES);
-        for (int i = 0; i < lineCount; ++i)
+        for (int index = 0; index < quantity; index++)
         {
-            float a = i / (float)lineCount;
-            float angle = a * Mathf.PI * 2;
-            // Vertex colors change from red to green
-            GL.Color(new Color(a, 1 - a, 0, 0.8F));
-            // One vertex at transform position
+            if (collisions[index] == null)
+            {
+                GL.Vertex3(0, 0, 0);
+                GL.Vertex(vectors[index] * maxDistance);
+            }
+        }
+        GL.End();
+
+        hit.SetPass(0);
+        GL.Begin(GL.LINES);
+        for (int index = 0; index < quantity; index++)
+        {
+            if (collisions[index] != null)
+            {
+                GL.Vertex3(0, 0, 0);
+                GL.Vertex(vectors[index] * collisions[index].Value);
+            }
+        }
+        GL.End();
+
+        mean.SetPass(0);
+        GL.Begin(GL.LINES);
+        for (int index = 0; index < meanCount; index++)
+        {
             GL.Vertex3(0, 0, 0);
-            // Another vertex at edge of circle
-            GL.Vertex3(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius, 0);
+            GL.Vertex(means[index]);
         }
         GL.End();
         GL.PopMatrix();
     }
-*/
+
 	void Update ()
 	{
 		UpdateVectors();
@@ -80,33 +79,50 @@ public class Lasers : MonoBehaviour
         Vector3 forward = transform.forward;
         RaycastHit hitInfo;
 
+        Vector3 collisionMean = Vector3.zero;
+        float min = float.PositiveInfinity;
+        bool lastCollision = false;
+        meanCount = 0;
+        int collisionCount = 1;
+
         for (int index = 0; index < quantity; index++)
         {
             vectors[index] = Quaternion.Euler(0, start + index / laserPerAngle, 0) * forward;
             if (Physics.Raycast(transform.position, vectors[index], out hitInfo, maxDistance))
-                collision[index] = hitInfo.point;
+            {
+                if (lastCollision)
+                {
+                    collisionMean += vectors[index];
+                    collisionCount++;
+                }
+                else
+                {
+                    collisionMean = vectors[index];
+                    collisionCount = 1;
+                }
+                if (min > hitInfo.distance)
+                    min = hitInfo.distance;
+                collisions[index] = hitInfo.distance;
+                lastCollision = true;
+            }
             else
-                collision[index] = null;
+            {
+                if (lastCollision)
+                {
+                    means[meanCount] = collisionMean / collisionCount;
+                    means[meanCount] = means[meanCount].normalized * (maxDistance - min);
+                    min = float.PositiveInfinity;
+                    meanCount++;
+                }
+                collisions[index] = null;
+                lastCollision = false;
+                
+            }
         }
-	}
-
-	void OnDrawGizmos()
-	{
-        for (int index = 0; index < quantity; index++)
+        if (lastCollision)
         {
-            if (collision[index] == null)
-            {
-                Gizmos.color = Color.red;
-                Gizmos.DrawRay(transform.position, vectors[index] * maxDistance);
-            }
-            else
-            {
-                Gizmos.color = Color.yellow;
-                Gizmos.DrawRay(transform.position, vectors[index] * Vector3.Distance(transform.position, collision[index].Value));
-            }
-            Gizmos.color = Color.green;
-            if (collision[index] != null)
-                Gizmos.DrawSphere(collision[index].Value, 0.05f);
+            means[meanCount] = collisionMean / collisionCount;
+            meanCount++;
         }
-	}
+    }
 }

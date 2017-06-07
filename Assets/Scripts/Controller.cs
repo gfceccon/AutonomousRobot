@@ -2,18 +2,19 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Controller : MonoBehaviour {
+public class Controller : MonoBehaviour
+{
+    public float speed;
 
 	private Rigidbody rigid;
-
-
-	// Use this for initialization
-	void Start () {
-		rigid = GetComponent<Rigidbody>();//pegando o tipo to componente
+    
+	void Start ()
+    {
+		rigid = GetComponent<Rigidbody>();
 	}
 	
-	// Update is called once per frame
-	void Update () {
-		rigid.velocity = new Vector3 (1, 0, 0);
+	void Update ()
+    {
+		rigid.velocity = transform.forward * speed;
 	}
 }
