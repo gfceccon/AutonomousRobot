@@ -62,6 +62,8 @@ public class Lasers : MonoBehaviour
             GL.Vertex3(0, 0, 0);
             GL.Vertex(means[index]);
         }
+        GL.Vertex3(0, 0, 0);
+        GL.Vertex(Vector3.forward * maxDistance);
         GL.End();
         GL.PopMatrix();
     }
@@ -76,19 +78,19 @@ public class Lasers : MonoBehaviour
 		float angle = quantity / laserPerAngle;
 		float start = - angle / 2f;
 
-        Vector3 forward = transform.forward;
+        Vector3 forward = Vector3.forward;
         RaycastHit hitInfo;
 
         Vector3 collisionMean = Vector3.zero;
         float min = float.PositiveInfinity;
         bool lastCollision = false;
-        meanCount = 0;
         int collisionCount = 1;
+        meanCount = 0;
 
         for (int index = 0; index < quantity; index++)
         {
             vectors[index] = Quaternion.Euler(0, start + index / laserPerAngle, 0) * forward;
-            if (Physics.Raycast(transform.position, vectors[index], out hitInfo, maxDistance))
+            if (Physics.Raycast(transform.position, transform.rotation * vectors[index], out hitInfo, maxDistance))
             {
                 if (lastCollision)
                 {
@@ -122,6 +124,7 @@ public class Lasers : MonoBehaviour
         if (lastCollision)
         {
             means[meanCount] = collisionMean / collisionCount;
+            means[meanCount] = means[meanCount].normalized * (maxDistance - min);
             meanCount++;
         }
     }
