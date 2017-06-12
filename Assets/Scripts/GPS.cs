@@ -18,6 +18,10 @@ public class GPS : MonoBehaviour
     public int seed;
     public MinMax distance;
     public Vector3 constraint;
+    [Range(0f, 1f)]
+    public float filterWeight;
+
+
     [Header("Abduction")]
     public bool abduction;
     [Range(0f, 1f)]
@@ -35,7 +39,6 @@ public class GPS : MonoBehaviour
 	void Start ()
 	{
         Random.InitState(seed);
-        StartCoroutine(Abduction());
         if (Random.value > probOnInit)
         {
             abductionTimer = Random.Range(abductionDelay.min, abductionDelay.max);
@@ -81,25 +84,7 @@ public class GPS : MonoBehaviour
             abductionTimer -= Time.deltaTime;
 
 
-        pos = (pos + lastPos) / 2f;
-    }
-
-    IEnumerator Abduction()
-    {
-        while(true)
-        {
-            if(Random.value > probOnInit)
-                yield return new WaitForSeconds(Random.Range(abductionDelay.min, abductionDelay.max));
-            float timer = Random.Range(abductionTime.min, abductionTime.max);
-            while(timer > 0f)
-            {
-                Vector3 abduction = new Vector3(Random.value, Random.value, Random.value).normalized;
-                abduction *= Random.Range(distance.min, distance.max);
-                pos += abduction;
-                yield return null;
-                timer -= Time.deltaTime;
-            }
-        }
+        pos = (1f - filterWeight) * pos + filterWeight * lastPos;
     }
 
     public Vector3 GetPosition()
