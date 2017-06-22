@@ -14,12 +14,17 @@ public class GPS : MonoBehaviour
     {
         public float min;
         public float max;
+        public MinMax(float min, float max)
+        {
+            this.min = min;
+            this.max = max;
+        }
     }
     public int seed;
     public MinMax distance;
     public Vector3 constraint;
     [Range(0f, 1f)]
-    public float filterWeight;
+    public float damping;
 
 
     [Header("Abduction")]
@@ -39,14 +44,10 @@ public class GPS : MonoBehaviour
 	void Start ()
 	{
         Random.InitState(seed);
-        if (Random.value > probOnInit)
+        if(abduction)
         {
-            abductionTimer = Random.Range(abductionDelay.min, abductionDelay.max);
-            abductionDuration = -1f;
-        }
-        else
-        {
-            abductionTimer = -1f;
+            if (Random.value > probOnInit)
+                abductionTimer = Random.Range(abductionDelay.min, abductionDelay.max);
             abductionDuration = -1f;
         }
         pos = transform.position;
@@ -63,28 +64,33 @@ public class GPS : MonoBehaviour
         noise *= Random.Range(distance.min, distance.max);
         pos += noise;
 
+        if(abduction)
+            Abduction();
+
+        pos = (1f - damping) * pos + damping * lastPos;
+    }
+
+    void Abduction()
+    {
         if (abductionTimer < 0f && abductionDuration < 0f)
         {
             abductionDuration = Random.Range(abductionTime.min, abductionTime.max);
             abductionTimer = Random.Range(abductionDelay.min, abductionDelay.max);
 
-            abductionNoise = new Vector3(Random.value * constraint.x,
-                                         Random.value * constraint.y,
-                                         Random.value * constraint.z).normalized;
+            abductionNoise = new Vector3((2 * Random.value - 1) * constraint.x,
+                                         (2 * Random.value - 1) * constraint.y,
+                                         (2 * Random.value - 1) * constraint.z).normalized;
             abductionNoise *= Random.Range(abductionDistance.min, abductionDistance.max);
             lastPos += abductionNoise;
         }
 
-        if(abductionDuration > 0f)
+        if (abductionDuration > 0f)
         {
             pos += abductionNoise;
             abductionDuration -= Time.deltaTime;
         }
-        else if(abductionTimer > 0f)
+        else if (abductionTimer > 0f)
             abductionTimer -= Time.deltaTime;
-
-
-        pos = (1f - filterWeight) * pos + filterWeight * lastPos;
     }
 
     public Vector3 GetPosition()
