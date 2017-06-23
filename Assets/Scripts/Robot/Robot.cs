@@ -14,6 +14,9 @@ public class Robot : MonoBehaviour
     public bool win;
     public GPS gps;
     public GPS destination;
+    public float wallThreshold;
+    public float cornerThreshold;
+    public GameObject indicatorPrefab;
 
     private Lasers lasers;
     private CarController car;
@@ -30,6 +33,24 @@ public class Robot : MonoBehaviour
         lasers = GetComponent<Lasers>();
         car = GetComponent<CarController>();
         userControl = GetComponent<CarUserControl>();
+    }
+
+    void Update()
+    {
+        float?[] collisions = lasers.Collisions;
+        bool collide = false;
+        float sqrWallThreshold = wallThreshold * wallThreshold;
+        float sqrCornerThreshold = cornerThreshold * cornerThreshold;
+        for (int i = 0; i < Lasers.LASER_COUNT; i++)
+        {
+            if(!collide)
+            {
+                foreach (var ind in indicators)
+                {
+                    //if(Vector3.SqrMagnitude(ind.transform.position - ind.transform.position) < sqrCornerThreshold)
+                }
+            }
+        }
     }
 
     void FixedUpdate()

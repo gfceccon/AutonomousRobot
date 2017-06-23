@@ -38,8 +38,12 @@ public class ConfigurationUI : MonoBehaviour
     public CameraFollow mainCamera;
     public CameraFollow minimap;
 
+    private bool init = true;
+
     void Start()
     {
+        init = true;
+
         carConfig.x.isOn = carGPS.constraint.x == 1f ? true : false;
         carConfig.y.isOn = carGPS.constraint.y == 1f ? true : false;
         carConfig.z.isOn = carGPS.constraint.z == 1f ? true : false;
@@ -66,6 +70,8 @@ public class ConfigurationUI : MonoBehaviour
         for (int i = 0; i < alternate.Length; i++)
             alternate[i].SetActive(false);
         alternate[tab].SetActive(true);
+
+        init = false;
     }
 
     void Update()
@@ -81,6 +87,8 @@ public class ConfigurationUI : MonoBehaviour
 
     public void ToggleConstraint()
     {
+        if (init)
+            return;
         Vector3 gpsConstraint;
 
         gpsConstraint.x = carConfig.x.isOn ? 1f : 0f;
@@ -98,17 +106,23 @@ public class ConfigurationUI : MonoBehaviour
 
     public void ToggleRays()
     {
+        if (init)
+            return;
         lasers.renderRays = viewConfig.renderRays.isOn;
     }
 
     public void ToggleOrtho()
     {
+        if (init)
+            return;
         minimap.gameObject.SetActive(viewConfig.topView.isOn);
     }
 
 
     public void OnCarGPSSlide()
     {
+        if (init)
+            return;
         float min = carConfig.minDistance.value;
         float max = carConfig.maxDistance.value;
         max = Mathf.Max(min, max);
@@ -121,6 +135,8 @@ public class ConfigurationUI : MonoBehaviour
 
     public void OnDestinationGPSSlide()
     {
+        if (init)
+            return;
         float min = destinationConfig.minDistance.value;
         float max = destinationConfig.maxDistance.value;
         max = Mathf.Max(min, max);
@@ -133,6 +149,8 @@ public class ConfigurationUI : MonoBehaviour
 
     public void OnCameraSlide()
     {
+        if (init)
+            return;
         minimap.orthoSize = viewConfig.topViewSize.value;
         mainCamera.height = viewConfig.height.value;
         mainCamera.distance = viewConfig.distance.value;
@@ -140,6 +158,8 @@ public class ConfigurationUI : MonoBehaviour
 
     public void OnTopView()
     {
+        if (init)
+            return;
         minimap.gameObject.SetActive(viewConfig.topView.isOn);
     }
 }
