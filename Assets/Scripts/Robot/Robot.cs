@@ -27,8 +27,24 @@ public class Robot : MonoBehaviour
     private List<Vector3> walls = new List<Vector3>();
     private List<GameObject> indicators = new List<GameObject>();
 
+    private Vector3 direction;
+
+    private float?[] collisions;
+    private Vector3[] vectors;
+    private bool stop = false;
+
+    enum CarState
+    {
+        Free,
+        WallFollowing,
+        Backtracking
+    }
+
+    private CarState state;
+
     void Start()
     {
+        state = CarState.Free;
         win = false;
         lasers = GetComponent<Lasers>();
         car = GetComponent<CarController>();
@@ -37,24 +53,97 @@ public class Robot : MonoBehaviour
 
     void Update()
     {
-        float?[] collisions = lasers.Collisions;
+        collisions = lasers.Collisions;
+        vectors = lasers.Vectors;
+        switch (state)
+        {
+            case CarState.Free:
+                FreeState();
+                break;
+            case CarState.WallFollowing:
+                WallState();
+                break;
+            case CarState.Backtracking:
+                break;
+            default:
+                break;
+        }
+    }
+
+    void FreeState()
+    {
+        direction = destination.GetPosition() - gps.GetPosition();
+        if (collisions[Lasers.LASER_COUNT / 2].HasValue && collisions[Lasers.LASER_COUNT / 2].Value < wallThreshold)
+            state = CarState.WallFollowing;
+    }
+
+    void WallState()
+    {
         bool collide = false;
-        float sqrWallThreshold = wallThreshold * wallThreshold;
         float sqrCornerThreshold = cornerThreshold * cornerThreshold;
         for (int i = 0; i < Lasers.LASER_COUNT; i++)
         {
-            if(!collide)
+            if (collisions[i].HasValue)
             {
-                foreach (var ind in indicators)
+                if (collide)
+                    continue;
+
+                Vector3 collisionPosition = gps.GetPosition() + vectors[i] * collisions[i].Value;
+                GameObject indicator = FindClosest(collisionPosition, sqrCornerThreshold);
+                if (!indicator)
                 {
-                    //if(Vector3.SqrMagnitude(ind.transform.position - ind.transform.position) < sqrCornerThreshold)
+                    indicator = Instantiate(indicatorPrefab);
+                    indicator.transform.position = collisionPosition;
+                    indicators.Add(indicator);
                 }
+                collide = true;
+            }
+            else
+                collide = false;
+        }
+        if(collide)
+        {
+            Vector3 collisionPosition = gps.GetPosition() + vectors[Lasers.LASER_COUNT - 1] * collisions[Lasers.LASER_COUNT - 1].Value;
+            GameObject indicator = FindClosest(collisionPosition, sqrCornerThreshold);
+            if (!indicator)
+            {
+                indicator = Instantiate(indicatorPrefab);
+                indicator.transform.position = collisionPosition;
+                indicators.Add(indicator);
             }
         }
+
+        float minDistance = float.PositiveInfinity;
+        foreach (var indicator in indicators)
+        {
+            float distance = Vector3.SqrMagnitude(destination.GetPosition() - indicator.transform.position);
+            if (distance < minDistance)
+                direction = indicator.transform.position - gps.GetPosition();
+        }
+        stop = true;
+    }
+
+    GameObject FindClosest(Vector3 collisionPosition, float threshold)
+    {
+        float minDistance = float.PositiveInfinity;
+        GameObject indicator = null;
+        foreach (var ind in indicators)
+        {
+            float sqrDistance = Vector3.SqrMagnitude(ind.transform.position - collisionPosition);
+            if (sqrDistance < threshold)
+            {
+                indicator = ind;
+                if (sqrDistance < minDistance)
+                    minDistance = sqrDistance;
+            }
+        }
+        return indicator;
     }
 
     void FixedUpdate()
     {
+        if (stop)
+            return;
         if (win)
         {
             userControl.enabled = false;
@@ -64,10 +153,9 @@ public class Robot : MonoBehaviour
         float steering = 0f;
         float accel = 1f;
         float handbreak = 0f;
-        Vector3 direction = destination.GetPosition() - gps.GetPosition();
 
         steering = Vector3.Cross(transform.forward, direction.normalized).y;
-        if(!userControl.Using)
+        if(!userControl.Using || stop)
             car.Move(steering, accel, accel, handbreak);
     }
 
