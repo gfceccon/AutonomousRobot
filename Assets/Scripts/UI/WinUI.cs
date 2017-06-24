@@ -8,14 +8,24 @@ using System.Collections.Generic;
 
 public class WinUI : MonoBehaviour
 {
-    public Robot robot;
     public GameObject winScreen;
     public GameObject controller;
 
+    private SmartCar car;
+
+    private void Start()
+    {
+        car = GameObject.Find("Car").GetComponent<SmartCar>();
+    }
+
     void Update()
     {
-        controller.SetActive(true);
-        if (robot.win)
+        if (car.win)
+        {
             winScreen.SetActive(true);
+            controller.SetActive(false);
+        }
+        else
+            controller.SetActive(true);
     }
 }

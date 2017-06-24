@@ -27,12 +27,16 @@ public class Lasers : MonoBehaviour
     public Material rayHitMaterial;
     public Material rayMissMaterial;
 
+
     public void OnRenderObject()
     {
         if (!renderRays)
             return;
+
+        Matrix4x4 translate = Matrix4x4.Translate(transform.position + offset);
+
         GL.PushMatrix();
-        GL.MultMatrix(transform.localToWorldMatrix);
+        GL.MultMatrix(translate);
 
         rayMissMaterial.SetPass(0);
         GL.Begin(GL.LINES);
@@ -40,8 +44,8 @@ public class Lasers : MonoBehaviour
         {
             if (collisions[index] == null)
             {
-                GL.Vertex(offset);
-                GL.Vertex(offset + vectors[index] * MAX_DISTANCE);
+                GL.Vertex(Vector3.zero);
+                GL.Vertex(vectors[index] * MAX_DISTANCE);
             }
         }
         GL.End();
@@ -52,8 +56,8 @@ public class Lasers : MonoBehaviour
         {
             if (collisions[index] != null)
             {
-                GL.Vertex(offset);
-                GL.Vertex(offset + vectors[index] * collisions[index].Value);
+                GL.Vertex(Vector3.zero);
+                GL.Vertex(vectors[index] * collisions[index].Value);
             }
         }
         GL.End();
@@ -70,13 +74,13 @@ public class Lasers : MonoBehaviour
 		float angle = LASER_COUNT / LASER_PER_ANGLE;
 		float start = - angle / 2f;
 
-        Vector3 forward = Vector3.forward;
+        Vector3 forward = transform.forward;
         RaycastHit hitInfo;
         
         for (int index = 0; index < LASER_COUNT; index++)
         {
             vectors[index] = Quaternion.Euler(0, start + index / LASER_PER_ANGLE, 0) * forward;
-            if (Physics.Raycast(transform.position + offset, transform.rotation * vectors[index], out hitInfo, MAX_DISTANCE, collisionLayer))
+            if (Physics.Raycast(transform.position + offset, vectors[index], out hitInfo, MAX_DISTANCE, collisionLayer))
                 collisions[index] = hitInfo.distance;
             else
                 collisions[index] = null;
