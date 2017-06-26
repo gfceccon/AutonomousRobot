@@ -13,27 +13,27 @@ public enum VType
     ClosedCorner
 }
 
-public class Vertice
+public class Vertex
 {
     public VType type;
     public Vector3 pos;
     public Edge next;
     public Edge prev;
 
-    private Vertice() { }
+    private Vertex() { }
 
-    public Vertice(Vector3 from, VType type)
+    public Vertex(Vector3 from, VType type)
     {
         this.type = type;
         this.pos = from;
     }
 
-    public void Next(Vertice to)
+    public void Next(Vertex to)
     {
         this.next = new Edge(this, to, Vector3.up);
     }
 
-    public void Prev(Vertice to)
+    public void Prev(Vertex to)
     {
         this.prev = new Edge(to, this, Vector3.down);
     }

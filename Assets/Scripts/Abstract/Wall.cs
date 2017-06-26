@@ -8,7 +8,7 @@ using System.Collections.Generic;
 
 public class Wall
 {
-    Vertice v1;
-    Vertice v2;
+    Vertex v1;
+    Vertex v2;
     Vector3 direction;
 }

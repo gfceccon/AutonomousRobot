@@ -8,14 +8,14 @@ using System.Collections.Generic;
 
 public class Edge
 {
-    public Vertice from;
-    public Vertice to;
+    public Vertex from;
+    public Vertex to;
     public Vector3 direction;
     public Vector3 normal;
 
     private Edge() { }
 
-    public Edge(Vertice from, Vertice to, Vector3 cross)
+    public Edge(Vertex from, Vertex to, Vector3 cross)
     {
         
     }
