@@ -6,13 +6,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-public class Lasers : MonoBehaviour
+[ExecuteInEditMode]
+public class Rays : MonoBehaviour
 {
-	public const int LASER_COUNT = 360;
-	public const float MAX_DISTANCE = 8f;
-	public const float LASER_PER_ANGLE = 2f;
-    
-	private Vector3[] vectors = new Vector3[LASER_COUNT];
+    public const int LASER_COUNT = 360;
+    public const float MAX_DISTANCE = 8f;
+    public const float LASER_PER_ANGLE = 2f;
+
+    private Vector3[] vectors = new Vector3[LASER_COUNT];
     private float?[] collisions = new float?[LASER_COUNT];
 
 
@@ -25,9 +26,6 @@ public class Lasers : MonoBehaviour
     public bool renderRays;
     public Material rayHitMaterial;
     public Material rayMissMaterial;
-
-    public delegate void Completion(Vector3[] vectors, float?[] collisions);
-    private Completion complete;
 
 
     public void OnRenderObject()
@@ -66,19 +64,24 @@ public class Lasers : MonoBehaviour
         GL.PopMatrix();
     }
 
-	void Update ()
-	{
-		UpdateVectors();
-	}
+    void Start()
+    {
+        enabled = false;
+    }
 
-	void UpdateVectors()
-	{
-		float angle = LASER_COUNT / LASER_PER_ANGLE;
-		float start = - angle / 2f;
+    void Update()
+    {
+        UpdateVectors();
+    }
+
+    void UpdateVectors()
+    {
+        float angle = LASER_COUNT / LASER_PER_ANGLE;
+        float start = -angle / 2f;
 
         Vector3 forward = transform.forward;
         RaycastHit hitInfo;
-        
+
         for (int index = 0; index < LASER_COUNT; index++)
         {
             vectors[index] = Quaternion.Euler(0, start + index / LASER_PER_ANGLE, 0) * forward;
@@ -87,12 +90,5 @@ public class Lasers : MonoBehaviour
             else
                 collisions[index] = null;
         }
-        if (complete != null)
-            complete(vectors, collisions);
-    }
-
-    public void OnComplete(Completion onComplete)
-    {
-        this.complete = onComplete;
     }
 }

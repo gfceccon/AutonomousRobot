@@ -22,7 +22,7 @@ public class ConfigurationUI : MonoBehaviour
     public struct ViewConfig
     {
         public Toggle renderRays;
-        public Toggle topView;
+        public Toggle topView, minimap;
         public Slider distance, height, topViewSize;
     }
 
@@ -35,8 +35,8 @@ public class ConfigurationUI : MonoBehaviour
     public ViewConfig viewConfig;
 
     public Lasers lasers;
-    public CameraFollow mainCamera;
-    public CameraFollow minimap;
+    public CameraFollow perspective;
+    public CameraFollow ortho;
 
     private bool init = true;
 
@@ -60,11 +60,17 @@ public class ConfigurationUI : MonoBehaviour
         destinationConfig.minDistance.value = destinationGPS.distance.min;
         destinationConfig.maxDistance.value = destinationGPS.distance.max;
 
-        viewConfig.distance.value = mainCamera.distance;
-        viewConfig.height.value = mainCamera.height;
+        viewConfig.distance.value = perspective.distance;
+        viewConfig.height.value = perspective.height;
         viewConfig.renderRays.isOn = lasers.renderRays;
-        viewConfig.topView.isOn = minimap.enabled;
-        viewConfig.topViewSize.value = minimap.orthoSize;
+
+        Camera orthoCamera = ortho.GetComponent<Camera>();
+        Camera perspectiveCamera = perspective.GetComponent<Camera>();
+        Rect orthoViewport = orthoCamera.rect;
+        Rect perspectiveViewport = perspectiveCamera.rect;
+
+        viewConfig.topView.isOn = orthoViewport.Contains(perspectiveViewport.min);
+        viewConfig.topViewSize.value = ortho.orthoSize;
 
         tab = 0;
         for (int i = 0; i < alternate.Length; i++)
@@ -115,7 +121,16 @@ public class ConfigurationUI : MonoBehaviour
     {
         if (init)
             return;
-        minimap.gameObject.SetActive(viewConfig.topView.isOn);
+        Camera orthoCamera = ortho.GetComponent<Camera>();
+        Camera perspectiveCamera = perspective.GetComponent<Camera>();
+        Rect orthoViewport = orthoCamera.rect;
+        Rect perspectiveViewport = perspectiveCamera.rect;
+        float orthoDepth = orthoCamera.depth;
+        float perspectiveDepth = perspectiveCamera.depth;
+        orthoCamera.rect = perspectiveViewport;
+        perspectiveCamera.rect = orthoViewport;
+        orthoCamera.depth = perspectiveDepth;
+        perspectiveCamera.depth = orthoDepth;
     }
 
 
@@ -151,15 +166,15 @@ public class ConfigurationUI : MonoBehaviour
     {
         if (init)
             return;
-        minimap.orthoSize = viewConfig.topViewSize.value;
-        mainCamera.height = viewConfig.height.value;
-        mainCamera.distance = viewConfig.distance.value;
+        ortho.orthoSize = viewConfig.topViewSize.value;
+        perspective.height = viewConfig.height.value;
+        perspective.distance = viewConfig.distance.value;
     }
 
     public void OnTopView()
     {
         if (init)
             return;
-        minimap.gameObject.SetActive(viewConfig.topView.isOn);
+        ortho.gameObject.SetActive(viewConfig.topView.isOn);
     }
 }

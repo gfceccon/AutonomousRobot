@@ -19,22 +19,32 @@ public class Vertex
     public Vector3 pos;
     public Edge next;
     public Edge prev;
+    public Vector3 normal;
+
+    public GameObject obj;
 
     private Vertex() { }
 
-    public Vertex(Vector3 from, VType type)
+    public Vertex(Vector3 from, VType type, GameObject obj = null)
     {
         this.type = type;
         this.pos = from;
+        this.obj = obj;
+        if (obj != null)
+            obj.transform.position = from;
     }
 
     public void Next(Vertex to)
     {
-        this.next = new Edge(this, to, Vector3.up);
+        next = new Edge(this, to, Vector3.up);
+        if(prev != null)
+            normal = (prev.normal + next.normal).normalized;
     }
 
     public void Prev(Vertex to)
     {
-        this.prev = new Edge(to, this, Vector3.down);
+        prev = new Edge(to, this, Vector3.down);
+        if (next != null)
+            normal = (prev.normal + next.normal).normalized;
     }
 }

@@ -17,6 +17,9 @@ public class Edge
 
     public Edge(Vertex from, Vertex to, Vector3 cross)
     {
-        
+        this.from = from;
+        this.to = to;
+        this.direction = (to.pos - from.pos).normalized;
+        this.normal = Vector3.Cross(this.direction, cross).normalized;
     }
 }
