@@ -15,10 +15,6 @@ public class Lasers : MonoBehaviour
 	private Vector3[] vectors = new Vector3[LASER_COUNT];
     private float?[] collisions = new float?[LASER_COUNT];
 
-
-    public Vector3[] Vectors { get { return vectors; } }
-    public float?[] Collisions { get { return collisions; } }
-
     public Vector3 offset;
     public LayerMask collisionLayer;
 

@@ -39,8 +39,8 @@ public class BUG : MonoBehaviour
     [Header("Configurations")]
     [Tooltip("Destination GPS")]
     public GPS destination;
-    [Tooltip("Turn direction")]
-    public Direction turn;
+    [Tooltip("Wall side")]
+    public Direction wallSide;
     [Tooltip("Line distance threshold")]
     public float lineThreshold;
     [Tooltip("Wall distance along normal")]
@@ -69,6 +69,7 @@ public class BUG : MonoBehaviour
     // Car position, direction and movement
     private Vector3 position;
     private Vector3 direction;
+
     float accel;
     float steering;
     float handbreak;
@@ -100,10 +101,25 @@ public class BUG : MonoBehaviour
         findNewLine = false;
         state = BUGState.Line;
         lasers.OnComplete(UpdateVectors);
+
+        win = false;
+        stop = false;
+        linePoint = gps.GetPosition();
+        lineVector = (destination.GetPosition() - gps.GetPosition()).normalized;
+
+        direction = lineVector;
     }
 
     void Update()
     {
+        Vector3 n = Vector3.zero;
+        if (normalVectors != null)
+            foreach (Vector3 normal in normalVectors)
+                if (normal.magnitude > wallThreshold) n += normal;
+        n.Normalize();
+        Vector3 u = (wallSide == Direction.Left ? Vector3.up : -Vector3.up);
+        direction = Vector3.Cross(n, u);
+        OnPath();
         switch (state)
         {
             case BUGState.Line:
@@ -114,6 +130,128 @@ public class BUG : MonoBehaviour
                 FollowWall();
                 break;
         }
+    }
+
+    void FollowPath()
+    {
+
+    }
+
+    void FollowWall()
+    {
+
+    }
+
+    void UpdateStates()
+    {
+        position = gps.GetPosition();
+        if (_slices != slices)
+        {
+            normalVectors = new Vector3[slices];
+            freeVectors = new Vector3[slices];
+            isFree = new bool[slices];
+            _slices = slices;
+        }
+    }
+
+    Vector3 CollisionPos(Vector3[] vectors, float?[] collisions, int index) { return position + vectors[index] * collisions[index].Value + lasers.offset; }
+
+    void UpdateVectors(Vector3[] vectors, float?[] collisions)
+    {
+        UpdateStates();
+        int size = Lasers.LASER_COUNT / slices;
+        for (int i = 0; i < slices; i++)
+        {
+            int index = size * i;
+            Vector3 free = Vector3.zero;
+            Vector3 normal = Vector3.zero;
+
+            int counter = 0;
+            int freeCounter = 0;
+
+            for (int ls = index + 1; ls < index + size; ls++)
+            {
+                if (ls >= Lasers.LASER_COUNT)
+                    break;
+                if (collisions[ls].HasValue)
+                {
+                    normal += position - CollisionPos(vectors, collisions, ls);
+                }
+                else
+                {
+                    free += vectors[ls];
+                    freeCounter++;
+                }
+                counter++;
+            }
+            float percentage = (freeCounter * 1f) / (counter * 1f);
+
+            if (percentage < wallPercentage)
+            {
+                isFree[i] = false;
+                freeVectors[i] = Vector3.zero;
+                normalVectors[i] = normal / (counter - freeCounter);
+            }
+            else
+            {
+                isFree[i] = true;
+                normalVectors[i] = Vector3.zero;
+                freeVectors[i] = free / (freeCounter);
+            }
+        }
+    }
+
+    bool OnPath()
+    {
+        bool onPath = false;
+
+        Vector3 ap = linePoint - position;
+        Vector3 dist = ap - Vector3.Dot(ap, lineVector) * lineVector;
+        
+        if (dist.magnitude < lineThreshold)
+            onPath = true;
+
+        return onPath;
+    }
+
+    Vector3 ClosestVector(Vector3[] vectors, Vector3 dir, out int sliceIndex)
+    {
+        int index = 0;
+        Vector3 closest = vectors[index];
+        float cross = Vector3.Cross(dir.normalized, transform.forward).y;
+        float dot = Vector3.Dot(dir.normalized, transform.forward);
+
+        if (dot < 0f)
+        {
+            if (cross < 0f)
+                index = 0;
+            else if (cross > 0f)
+                index = Lasers.LASER_COUNT - 1;
+        }
+        else if (dot > 0f)
+        {
+            index = Mathf.FloorToInt(cross * Lasers.LASER_COUNT / 2);
+            index += Lasers.LASER_COUNT / 2 - 1;
+            index = Mathf.Clamp(index, 0, Lasers.LASER_COUNT - 1);
+        }
+        else
+        {
+            switch (wallSide)
+            {
+
+                case Direction.Left:
+                default:
+                    index = 0;
+                    break;
+                case Direction.Right:
+                    index = Lasers.LASER_COUNT - 1;
+                    break;
+            }
+        }
+        closest = vectors[index];
+        sliceIndex = (index * slices) / Lasers.LASER_COUNT;
+
+        return closest;
     }
 
     void FixedUpdate()
@@ -132,110 +270,41 @@ public class BUG : MonoBehaviour
             car.Move(steering, accel, accel, handbreak);
     }
 
-    void UpdateValues()
+    public void OnRenderObject()
     {
-        position = gps.GetPosition();
-        if (_slices != slices)
+        if (!renderRays)
+            return;
+        Matrix4x4 translate = Matrix4x4.Translate(transform.position + lasers.offset);
+
+        GL.PushMatrix();
+        GL.MultMatrix(translate);
+
+        rayNormalMaterial.SetPass(0);
+        GL.Begin(GL.LINES);
+        for (int index = 0; index < normalVectors.Length; index++)
         {
-            normalVectors = new Vector3[slices];
-            freeVectors = new Vector3[slices];
-            isFree = new bool[slices];
-            _slices = slices;
+            GL.Vertex(Vector3.zero);
+            GL.Vertex(normalVectors[index] * wallDistance);
         }
+        GL.End();
+
+        rayFreeMaterial.SetPass(0);
+        GL.Begin(GL.LINES);
+        for (int index = 0; index < freeVectors.Length; index++)
+        {
+            if (!isFree[index])
+                continue;
+            GL.Vertex(Vector3.zero);
+            GL.Vertex(freeVectors[index] * Lasers.MAX_DISTANCE);
+        }
+        GL.End();
+        GL.PopMatrix();
     }
 
-    Vector3 CollisionPos(Vector3[] vectors, float?[] collisions, int index) { return position + vectors[index] * collisions[index].Value + lasers.offset; }
-
-    void UpdateVectors(Vector3[] vectors, float?[] collisions)
+    void OnCollisionEnter(Collision collision)
     {
-        UpdateValues();
-        int size = Lasers.LASER_COUNT / slices;
-        for (int i = 0; i < slices; i++)
+        if ((collision.collider.gameObject.layer & LayerMask.NameToLayer("Map")) != 0)
         {
-            int index = size * i;
-            Vector3 free = Vector3.zero;
-            Vector3 normal = Vector3.zero;
-
-            int counter = 0;
-            int freeCounter = 0;
-
-            for (int ls = index + 1; ls < index + size; ls++)
-            {
-                if (ls >= Lasers.LASER_COUNT)
-                    break;
-                if(collisions[ls].HasValue)
-                {
-                    normal += position - CollisionPos(vectors, collisions, ls);
-                }
-                else
-                {
-                    free += vectors[ls];
-                    freeCounter++;
-                }
-                counter++;
-            }
-            float percentage = (freeCounter * 1f) / (counter * 1f);
-
-            if (percentage < wallPercentage)
-                isFree[i] = false;
-            else
-                isFree[i] = true;
         }
-    }
-
-    bool OnPath()
-    {
-        bool line = false;
-        return line;
-    }
-
-    Vector3 ClosestVector(Vector3[] vectors, Vector3 dir, out int sliceIndex)
-    {
-        int index = 0;
-        Vector3 closest = vectors[index];
-        float cross = Vector3.Cross(dir.normalized, transform.forward).y;
-        float dot = Vector3.Dot(dir.normalized, transform.forward);
-
-        if (dot < 0f)
-        {
-            if (cross < 0f)
-                index = 0;
-            else if (cross > 0f)
-                index = Lasers.LASER_COUNT -1;
-        }
-        else if (dot > 0f)
-        {
-            index = Mathf.FloorToInt(cross * Lasers.LASER_COUNT / 2);
-            index += Lasers.LASER_COUNT / 2 - 1;
-            index = Mathf.Clamp(index, 0, Lasers.LASER_COUNT - 1);
-        }
-        else
-        {
-            switch (turn)
-            {
-
-                case Direction.Left:
-                default:
-                    index = 0;
-                    break;
-                case Direction.Right:
-                    index = Lasers.LASER_COUNT - 1;
-                    break;
-            }
-        }
-        closest = vectors[index];
-        sliceIndex = (index * slices) / Lasers.LASER_COUNT;
-
-        return closest;
-    }
-
-    void FollowPath()
-    {
-
-    }
-
-    void FollowWall()
-    {
-
     }
 }

@@ -11,11 +11,11 @@ public class WinUI : MonoBehaviour
     public GameObject winScreen;
     public GameObject controller;
 
-    private SmartCar car;
+    private BUG car;
 
     private void Start()
     {
-        car = GameObject.Find("Car").GetComponent<SmartCar>();
+        car = GameObject.Find("Car").GetComponent<BUG>();
     }
 
     void Update()
