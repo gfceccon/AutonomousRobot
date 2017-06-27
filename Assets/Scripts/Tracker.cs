@@ -6,7 +6,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-[ExecuteInEditMode]
 public class Tracker : MonoBehaviour
 {
     public GPS gps;

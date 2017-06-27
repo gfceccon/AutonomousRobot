@@ -25,13 +25,13 @@ public class Vertex
 
     private Vertex() { }
 
-    public Vertex(Vector3 from, VType type, GameObject obj = null)
+    public Vertex(Vector3 pos, VType type, GameObject obj = null)
     {
         this.type = type;
-        this.pos = from;
+        this.pos = pos;
         this.obj = obj;
         if (obj != null)
-            obj.transform.position = from;
+            obj.transform.position = pos;
     }
 
     public void Next(Vertex to)
@@ -46,5 +46,12 @@ public class Vertex
         prev = new Edge(to, this, Vector3.down);
         if (next != null)
             normal = (prev.normal + next.normal).normalized;
+    }
+
+    public void Pos(Vector3 position)
+    {
+        pos = position;
+        if(obj != null)
+            obj.transform.position = position;
     }
 }

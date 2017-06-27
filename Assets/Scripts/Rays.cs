@@ -22,17 +22,13 @@ public class Rays : MonoBehaviour
 
     public Vector3 offset;
     public LayerMask collisionLayer;
-
-    public bool renderRays;
+    
     public Material rayHitMaterial;
     public Material rayMissMaterial;
 
 
     public void OnRenderObject()
     {
-        if (!renderRays)
-            return;
-
         Matrix4x4 translate = Matrix4x4.Translate(transform.position + offset);
 
         GL.PushMatrix();
@@ -66,7 +62,11 @@ public class Rays : MonoBehaviour
 
     void Start()
     {
+#if !UNITY_EDITOR
+        Destroy(gameObject);
+#else
         enabled = false;
+#endif
     }
 
     void Update()
