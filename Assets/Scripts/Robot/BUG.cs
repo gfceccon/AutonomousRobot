@@ -155,25 +155,56 @@ public class BUG : MonoBehaviour
         }
         Vector3 normal = Vector3.zero;
         Vector3 target = Vector3.zero;
-        while (ind >= 0 && ind < slices)
+        int i = ind;
+        while (i >= 0 && i < slices)
         {
-            if (!isFree[ind])
-            {
-                float len = normalVectors[ind].magnitude;
-                if (len > wallDistance)
-                    len = 0;
-                else
-                    len = len - wallDistance;
-                normal -= normalVectors[ind].normalized * len;
-            }
-            else
-            {
-                normal = normal.normalized;
-                target = freeVectors[ind];
-                break;
-            }
-            ind += step;
+            if (isFree[i])
+                i += step;
+            else break;
         }
+        int j = i;
+        while (j >= 0 && j < slices)
+        {
+            if (!isFree[j])
+                j += step;
+            else break;
+        }
+        int k = i;
+        while (k != j)
+        {
+            float len = normalVectors[ind].magnitude;
+            if (len > wallDistance)
+                len = 0;
+            else
+                len = len - wallDistance;
+            normal -= normalVectors[ind].normalized * len;
+            k += step;
+        }
+        if (j == -1 && i != j)
+            StartCoroutine(Collided(-1f));
+        else if (j == slices && i != j)
+            StartCoroutine(Collided(1f));
+        else
+        {
+            switch (wallSide)
+            {
+                case Direction.Left:
+                    if (i == j)
+                        state = BUGState.Line;
+                    else
+                        ind = j;
+                    break;
+                case Direction.Right:
+                default:
+                    if (i == j)
+                        state = BUGState.Line;
+                    else
+                        ind = j;
+                    break;
+            }
+        }
+        normal = normal.normalized;
+        target = freeVectors[ind];
 
         Vector3 tangent;
         bool onPath = OnPath(out tangent);
@@ -349,7 +380,7 @@ public class BUG : MonoBehaviour
     {
         if ((collision.collider.gameObject.layer & LayerMask.NameToLayer("Map")) != 0)
         {
-            StartCoroutine(Collided());
+            StartCoroutine(Collided(0f));
             state = BUGState.Reverse;
         }
     }
@@ -360,10 +391,10 @@ public class BUG : MonoBehaviour
             win = true;
     }
 
-    IEnumerator Collided()
+    IEnumerator Collided(float steer)
     {
         accel = -1f;
-        steering = 0f;
+        steering = steer;
         yield return new WaitForSeconds(reverseTime);
         state = BUGState.Line;
         accel = 1f;
