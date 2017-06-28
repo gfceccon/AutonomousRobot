@@ -13,22 +13,24 @@ using UnityStandardAssets.Vehicles.Car;
 [RequireComponent(typeof(CarUserControl))]
 public class BUG : MonoBehaviour
 {
+    public const int MIN_SLICES = 3;
+    public const int MAX_SLICES = 10;
     public enum Direction
     {
         Left,
         Right
     }
 
-    enum BUGState
+    public enum BUGState
     {
         Line,
-        Wall
+        Wall,
+        Reverse
     }
 
     // Control booleans
     [HideInInspector]
     public bool win;
-    private bool stop;
 
     // References
     private GPS gps;
@@ -43,28 +45,32 @@ public class BUG : MonoBehaviour
     public Direction wallSide;
     [Tooltip("Line distance threshold")]
     public float lineThreshold;
+    [Tooltip("Follow vector length")]
+    public float lineFollowDamp;
     [Tooltip("Wall distance along normal")]
     public float wallDistance;
     [Tooltip("Wall threshold along normal")]
     public float wallThreshold;
+    [Tooltip("Reverse time")]
+    public float reverseTime;
 
     [Header("Lasers Configuration")]
     [Tooltip("Number of slices")]
-    [Range(3, Lasers.LASER_COUNT)]
+    [Range(BUG.MIN_SLICES, BUG.MAX_SLICES)]
     public int slices;
     [Tooltip("Lasers percentage to follow")]
     [Range(0f, 1f)]
     public float wallPercentage;
 
     [Header("Prefabs")]
-    [Tooltip("Wall vertice indicator")]
-    public GameObject wallObj;
     [Tooltip("Render vectors")]
     public bool renderRays;
     [Tooltip("Normal vectors")]
     public Material rayNormalMaterial;
     [Tooltip("Free path vectors")]
     public Material rayFreeMaterial;
+    [Tooltip("Target path line")]
+    public Material rayPathMaterial;
 
     // Car position, direction and movement
     private Vector3 position;
@@ -79,11 +85,10 @@ public class BUG : MonoBehaviour
     private Vector3[] freeVectors;
     private bool[] isFree;
 
-    private bool findNewLine;
     private Vector3 linePoint;
     private Vector3 lineVector;
 
-    private BUGState state;
+    public BUGState state;
 
     void Start()
     {
@@ -98,48 +103,87 @@ public class BUG : MonoBehaviour
         _slices = 0;
         steering = 0f;
         handbreak = 0f;
-        findNewLine = false;
         state = BUGState.Line;
-        lasers.OnComplete(UpdateVectors);
 
         win = false;
-        stop = false;
         linePoint = gps.GetPosition();
         lineVector = (destination.GetPosition() - gps.GetPosition()).normalized;
-
-        direction = lineVector;
     }
 
     void Update()
     {
-        Vector3 n = Vector3.zero;
-        if (normalVectors != null)
-            foreach (Vector3 normal in normalVectors)
-                if (normal.magnitude > wallThreshold) n += normal;
-        n.Normalize();
-        Vector3 u = (wallSide == Direction.Left ? Vector3.up : -Vector3.up);
-        direction = Vector3.Cross(n, u);
-        OnPath();
+        UpdateVectors(lasers.Vectors, lasers.Collisions);
         switch (state)
         {
             case BUGState.Line:
                 FollowPath();
                 break;
             case BUGState.Wall:
-            default:
                 FollowWall();
+                break;
+            case BUGState.Reverse:
+            default:
                 break;
         }
     }
 
     void FollowPath()
     {
+        Vector3 tangent;
+        bool onPath = OnPath(out tangent);
+        direction = tangent + lineVector * lineFollowDamp;
 
+        int dirIndex;
+        int sliceIndex;
+        dirIndex = ClosestVector(lasers.Vectors, direction, out sliceIndex);
+        if (!isFree[sliceIndex])
+            state = BUGState.Wall;
     }
 
     void FollowWall()
     {
+        int ind = 0, step = 1;
+        if (wallSide == Direction.Left)
+        {
+            ind = 0;
+            step = 1;
+        }
+        else if (wallSide == Direction.Right)
+        {
+            ind = slices - 1;
+            step = -1;
+        }
+        Vector3 normal = Vector3.zero;
+        Vector3 target = Vector3.zero;
+        while (ind >= 0 && ind < slices)
+        {
+            if (!isFree[ind])
+            {
+                float len = normalVectors[ind].magnitude;
+                if (len > wallDistance)
+                    len = 0;
+                else
+                    len = len - wallDistance;
+                normal -= normalVectors[ind].normalized * len;
+            }
+            else
+            {
+                normal = normal.normalized;
+                target = freeVectors[ind];
+                break;
+            }
+            ind += step;
+        }
 
+        Vector3 tangent;
+        bool onPath = OnPath(out tangent);
+        Vector3 lineDir = tangent + lineVector * lineFollowDamp;
+        int sliceIndex;
+        int lineInd = ClosestVector(lasers.Vectors, lineDir, out sliceIndex);
+
+        if (onPath && isFree[sliceIndex])
+            state = BUGState.Line;
+        direction = target + normal;
     }
 
     void UpdateStates()
@@ -201,63 +245,54 @@ public class BUG : MonoBehaviour
         }
     }
 
-    bool OnPath()
+    bool OnPath(out Vector3 tangent)
     {
         bool onPath = false;
 
         Vector3 ap = linePoint - position;
-        Vector3 dist = ap - Vector3.Dot(ap, lineVector) * lineVector;
-        
-        if (dist.magnitude < lineThreshold)
+        tangent = ap - Vector3.Dot(ap, lineVector) * lineVector;
+
+        if (tangent.magnitude < lineThreshold)
             onPath = true;
 
         return onPath;
     }
 
-    Vector3 ClosestVector(Vector3[] vectors, Vector3 dir, out int sliceIndex)
+    int ClosestVector(Vector3[] vectors, Vector3 dir, out int sliceIndex)
     {
         int index = 0;
-        Vector3 closest = vectors[index];
-        float cross = Vector3.Cross(dir.normalized, transform.forward).y;
-        float dot = Vector3.Dot(dir.normalized, transform.forward);
+        Vector3 normalized = dir.normalized;
+        float cross = Vector3.Cross(normalized, transform.forward).y;
+        float dot = Vector3.Dot(normalized, transform.forward);
 
         if (dot < 0f)
         {
             if (cross < 0f)
-                index = 0;
-            else if (cross > 0f)
                 index = Lasers.LASER_COUNT - 1;
+            else if (cross > 0f)
+                index = 0;
         }
         else if (dot > 0f)
         {
-            index = Mathf.FloorToInt(cross * Lasers.LASER_COUNT / 2);
-            index += Lasers.LASER_COUNT / 2 - 1;
-            index = Mathf.Clamp(index, 0, Lasers.LASER_COUNT - 1);
-        }
-        else
-        {
-            switch (wallSide)
+            float max = -1f;
+            for (int ls = 0; ls < Lasers.LASER_COUNT; ls++)
             {
-
-                case Direction.Left:
-                default:
-                    index = 0;
-                    break;
-                case Direction.Right:
-                    index = Lasers.LASER_COUNT - 1;
-                    break;
+                float d = Vector3.Dot(vectors[ls], normalized);
+                if (d > max)
+                {
+                    max = d;
+                    index = ls;
+                }
+                else break;
             }
         }
-        closest = vectors[index];
         sliceIndex = (index * slices) / Lasers.LASER_COUNT;
 
-        return closest;
+        return index;
     }
 
     void FixedUpdate()
     {
-        if (stop)
-            return;
         if (win)
         {
             userControl.enabled = false;
@@ -265,8 +300,9 @@ public class BUG : MonoBehaviour
             return;
         }
 
-        steering = Vector3.Cross(transform.forward, direction.normalized).y;
-        if (!userControl.Using || stop)
+        if (accel > 0)
+            steering = Vector3.Cross(transform.forward, direction.normalized).y;
+        if (!userControl.Using)
             car.Move(steering, accel, accel, handbreak);
     }
 
@@ -299,12 +335,37 @@ public class BUG : MonoBehaviour
         }
         GL.End();
         GL.PopMatrix();
+
+        rayPathMaterial.SetPass(0);
+        GL.Begin(GL.LINES);
+        GL.Vertex(linePoint + lasers.offset - lineVector * 100f);
+        GL.Vertex(linePoint + lineVector * 100f + lasers.offset);
+        GL.Vertex(transform.position + lasers.offset);
+        GL.Vertex(transform.position + lasers.offset + direction.normalized * 10f);
+        GL.End();
     }
 
     void OnCollisionEnter(Collision collision)
     {
         if ((collision.collider.gameObject.layer & LayerMask.NameToLayer("Map")) != 0)
         {
+            StartCoroutine(Collided());
+            state = BUGState.Reverse;
         }
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Destination"))
+            win = true;
+    }
+
+    IEnumerator Collided()
+    {
+        accel = -1f;
+        steering = 0f;
+        yield return new WaitForSeconds(reverseTime);
+        state = BUGState.Line;
+        accel = 1f;
     }
 }

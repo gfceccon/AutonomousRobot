@@ -15,16 +15,15 @@ public class Lasers : MonoBehaviour
 	private Vector3[] vectors = new Vector3[LASER_COUNT];
     private float?[] collisions = new float?[LASER_COUNT];
 
+    public Vector3[] Vectors { get { return vectors; } }
+    public float?[] Collisions { get { return collisions; } }
+
     public Vector3 offset;
     public LayerMask collisionLayer;
 
     public bool renderRays;
     public Material rayHitMaterial;
     public Material rayMissMaterial;
-
-    public delegate void Completion(Vector3[] vectors, float?[] collisions);
-    private Completion complete;
-
 
     public void OnRenderObject()
     {
@@ -83,12 +82,5 @@ public class Lasers : MonoBehaviour
             else
                 collisions[index] = null;
         }
-        if (complete != null)
-            complete(vectors, collisions);
-    }
-
-    public void OnComplete(Completion onComplete)
-    {
-        this.complete = onComplete;
     }
 }

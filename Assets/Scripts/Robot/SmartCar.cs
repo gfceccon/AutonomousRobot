@@ -89,11 +89,11 @@ public class SmartCar : MonoBehaviour
         state = CarState.Free;
         graph = new List<Vertex>();
         vertices = new List<Vertex>();
-        lasers.OnComplete(CalculateVertices);
     }
 
     void Update()
     {
+        CalculateVertices(lasers.Vectors, lasers.Collisions);
         // Update values
         position = gps.GetPosition();
 
