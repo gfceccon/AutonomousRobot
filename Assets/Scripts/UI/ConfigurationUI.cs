@@ -26,13 +26,23 @@ public class ConfigurationUI : MonoBehaviour
         public Slider distance, height, topViewSize;
     }
 
-    public GPSConfig carConfig;
-    public GPSConfig destinationConfig;
+    [System.Serializable]
+    public struct BUGConfig
+    {
+        public Slider lineThreshold, lineFollowDistance;
+        public Toggle wallSide;
+        public Slider wallThreshold, wallDistance;
+        public Slider laserSlices, laserPercentage;
+    }
+
+    public ViewConfig viewConfig;
+    public GPSConfig gpsCarConfig;
+    public GPSConfig gpsDestinationConfig;
 
     public GPS carGPS;
     public GPS destinationGPS;
+    public BUG bug;
 
-    public ViewConfig viewConfig;
 
     public Lasers lasers;
     public CameraFollow perspective;
@@ -44,21 +54,21 @@ public class ConfigurationUI : MonoBehaviour
     {
         init = true;
 
-        carConfig.x.isOn = carGPS.constraint.x == 1f ? true : false;
-        carConfig.y.isOn = carGPS.constraint.y == 1f ? true : false;
-        carConfig.z.isOn = carGPS.constraint.z == 1f ? true : false;
+        gpsCarConfig.x.isOn = carGPS.constraint.x == 1f ? true : false;
+        gpsCarConfig.y.isOn = carGPS.constraint.y == 1f ? true : false;
+        gpsCarConfig.z.isOn = carGPS.constraint.z == 1f ? true : false;
 
-        carConfig.damping.value = carGPS.damping;
-        carConfig.minDistance.value = carGPS.distance.min;
-        carConfig.maxDistance.value = carGPS.distance.max;
+        gpsCarConfig.damping.value = carGPS.damping;
+        gpsCarConfig.minDistance.value = carGPS.distance.min;
+        gpsCarConfig.maxDistance.value = carGPS.distance.max;
 
-        destinationConfig.x.isOn = destinationGPS.constraint.x == 1f ? true : false;
-        destinationConfig.y.isOn = destinationGPS.constraint.y == 1f ? true : false;
-        destinationConfig.z.isOn = destinationGPS.constraint.z == 1f ? true : false;
+        gpsDestinationConfig.x.isOn = destinationGPS.constraint.x == 1f ? true : false;
+        gpsDestinationConfig.y.isOn = destinationGPS.constraint.y == 1f ? true : false;
+        gpsDestinationConfig.z.isOn = destinationGPS.constraint.z == 1f ? true : false;
 
-        destinationConfig.damping.value = destinationGPS.damping;
-        destinationConfig.minDistance.value = destinationGPS.distance.min;
-        destinationConfig.maxDistance.value = destinationGPS.distance.max;
+        gpsDestinationConfig.damping.value = destinationGPS.damping;
+        gpsDestinationConfig.minDistance.value = destinationGPS.distance.min;
+        gpsDestinationConfig.maxDistance.value = destinationGPS.distance.max;
 
         viewConfig.distance.value = perspective.distance;
         viewConfig.height.value = perspective.height;
@@ -97,15 +107,15 @@ public class ConfigurationUI : MonoBehaviour
             return;
         Vector3 gpsConstraint;
 
-        gpsConstraint.x = carConfig.x.isOn ? 1f : 0f;
-        gpsConstraint.y = carConfig.y.isOn ? 1f : 0f;
-        gpsConstraint.z = carConfig.z.isOn ? 1f : 0f;
+        gpsConstraint.x = gpsCarConfig.x.isOn ? 1f : 0f;
+        gpsConstraint.y = gpsCarConfig.y.isOn ? 1f : 0f;
+        gpsConstraint.z = gpsCarConfig.z.isOn ? 1f : 0f;
 
         carGPS.constraint = gpsConstraint;
 
-        gpsConstraint.x = destinationConfig.x.isOn ? 1f : 0f;
-        gpsConstraint.y = destinationConfig.y.isOn ? 1f : 0f;
-        gpsConstraint.z = destinationConfig.z.isOn ? 1f : 0f;
+        gpsConstraint.x = gpsDestinationConfig.x.isOn ? 1f : 0f;
+        gpsConstraint.y = gpsDestinationConfig.y.isOn ? 1f : 0f;
+        gpsConstraint.z = gpsDestinationConfig.z.isOn ? 1f : 0f;
 
         destinationGPS.constraint = gpsConstraint;
     }
@@ -138,11 +148,11 @@ public class ConfigurationUI : MonoBehaviour
     {
         if (init)
             return;
-        float min = carConfig.minDistance.value;
-        float max = carConfig.maxDistance.value;
+        float min = gpsCarConfig.minDistance.value;
+        float max = gpsCarConfig.maxDistance.value;
         max = Mathf.Max(min, max);
-        carConfig.maxDistance.value = max;
-        float damping = carConfig.damping.value;
+        gpsCarConfig.maxDistance.value = max;
+        float damping = gpsCarConfig.damping.value;
 
         carGPS.distance = new GPS.MinMax(min, max);
         carGPS.damping = damping;
@@ -152,11 +162,11 @@ public class ConfigurationUI : MonoBehaviour
     {
         if (init)
             return;
-        float min = destinationConfig.minDistance.value;
-        float max = destinationConfig.maxDistance.value;
+        float min = gpsDestinationConfig.minDistance.value;
+        float max = gpsDestinationConfig.maxDistance.value;
         max = Mathf.Max(min, max);
-        destinationConfig.maxDistance.value = max;
-        float damping = destinationConfig.damping.value;
+        gpsDestinationConfig.maxDistance.value = max;
+        float damping = gpsDestinationConfig.damping.value;
 
         destinationGPS.distance = new GPS.MinMax(min, max);
         destinationGPS.damping = damping;
