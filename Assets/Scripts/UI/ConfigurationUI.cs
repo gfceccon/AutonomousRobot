@@ -14,15 +14,15 @@ public class ConfigurationUI : MonoBehaviour
     [System.Serializable]
     public struct GPSConfig
     {
+        public Slider minDistance, maxDistance, damping;
         public Toggle x, y, z;
-        public Slider damping, minDistance, maxDistance;
     }
 
     [System.Serializable]
     public struct ViewConfig
     {
         public Toggle renderRays;
-        public Toggle topView, minimap;
+        public Toggle topView;
         public Slider distance, height, topViewSize;
     }
 
@@ -35,6 +35,7 @@ public class ConfigurationUI : MonoBehaviour
         public Slider laserSlices, laserPercentage;
     }
 
+    public BUGConfig bugConfig;
     public ViewConfig viewConfig;
     public GPSConfig gpsCarConfig;
     public GPSConfig gpsDestinationConfig;
@@ -82,6 +83,14 @@ public class ConfigurationUI : MonoBehaviour
         viewConfig.topView.isOn = orthoViewport.Contains(perspectiveViewport.min);
         viewConfig.topViewSize.value = ortho.orthoSize;
 
+        bugConfig.lineThreshold.value = bug.lineThreshold;
+        bugConfig.lineFollowDistance.value = bug.lineFollowDamp;
+        bugConfig.wallSide.isOn = bug.wallSide == BUG.Direction.Left ? true : false;
+        bugConfig.wallThreshold.value = bug.wallThreshold;
+        bugConfig.wallDistance.value = bug.wallDistance;
+        bugConfig.laserSlices.value = bug.slices;
+        bugConfig.laserPercentage.value = bug.wallPercentage;
+
         tab = 0;
         for (int i = 0; i < alternate.Length; i++)
             alternate[i].SetActive(false);
@@ -99,6 +108,19 @@ public class ConfigurationUI : MonoBehaviour
                 alternate[i].SetActive(false);
             alternate[tab].SetActive(true);
         }
+    }
+
+    public void BUGChange()
+    {
+        if (init)
+            return;
+        bug.lineThreshold = bugConfig.lineThreshold.value;
+        bug.lineFollowDamp = bugConfig.lineFollowDistance.value;
+        bug.wallSide = bugConfig.wallSide.isOn ? BUG.Direction.Left : BUG.Direction.Right;
+        bug.wallThreshold = bugConfig.wallThreshold.value;
+        bug.wallDistance = bugConfig.wallDistance.value;
+        bug.slices = (int)bugConfig.laserSlices.value;
+        bug.wallPercentage = bugConfig.laserPercentage.value;
     }
 
     public void ToggleConstraint()

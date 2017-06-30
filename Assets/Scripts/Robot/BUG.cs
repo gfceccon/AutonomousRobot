@@ -90,6 +90,8 @@ public class BUG : MonoBehaviour
 
     public BUGState state;
 
+    private bool newLine;
+
     void Start()
     {
         // Get components
@@ -106,8 +108,7 @@ public class BUG : MonoBehaviour
         state = BUGState.Line;
 
         win = false;
-        linePoint = gps.GetPosition();
-        lineVector = (destination.GetPosition() - gps.GetPosition()).normalized;
+        newLine = true;
     }
 
     void Update()
@@ -303,7 +304,17 @@ public class BUG : MonoBehaviour
         if (accel > 0)
             steering = Vector3.Cross(transform.forward, direction.normalized).y;
         if (!userControl.Using)
+        {
+            if (newLine)
+            {
+                newLine = false;
+                linePoint = gps.GetPosition();
+                lineVector = (destination.GetPosition() - gps.GetPosition()).normalized;
+            }
             car.Move(steering, accel, accel, handbreak);
+        }
+        else
+            newLine = true;
     }
 
     public void OnRenderObject()
